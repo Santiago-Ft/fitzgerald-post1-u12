@@ -77,4 +77,4 @@ Se verifica que `ValidadorDuplicados` recibe la información pre-cargada por el 
 
 ## Resultado de los imports
 
-![Captura de consola de los imports](<./evidencias/parte-1/Resultados de los Imports del dominio y Spring.pngg>)
+![Captura de consola de los imports](<./evidencias/parte-1/Resultados de los Imports del dominio y Spring.png>)
