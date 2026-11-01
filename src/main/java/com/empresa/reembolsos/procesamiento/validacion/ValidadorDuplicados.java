@@ -1,14 +1,11 @@
 package com.empresa.reembolsos.procesamiento.validacion;
 
 import com.empresa.reembolsos.dominio.SolicitudReembolso;
-import com.empresa.reembolsos.infraestructura.RepositorioSolicitudesJpa; // VIOLACION INTENCIONAL REGLA 1
 import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
 public class ValidadorDuplicados extends ValidadorSolicitud {
-    private RepositorioSolicitudesJpa repositorioViolacion; // Violacion para prueba de ArchUnit
-
     @Override
     protected ResultadoValidacion validarPropio(SolicitudReembolso solicitud, List<SolicitudReembolso> pendientes) {
         boolean existeDuplicado = pendientes.stream()
