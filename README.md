@@ -127,3 +127,16 @@ Crear un `SolicitudReembolsoBuilder` o fábricas por categoría (`SolicitudViaje
 Aplicando el test de explicabilidad y la ****Rule of Three**, `SolicitudReembolso` posee una estructura simple que Jackson deserializa directamente desde el cuerpo JSON de la petición REST; introducir fábricas o builders hoy añadiría clases intermedias sin resolver una complejidad real de inicialización.
 #### Futura señal que haria reconsiderar la desicion
  Cuando al menos tres categorías de gasto incorporen conjuntos de atributos exclusivos complejos o reglas de inicialización mutuamente excluyentes que hagan ambiguo un único constructor o payload de entrada.
+
+ ## 6. Resumen de ADR-001
+ [El documento completo se encuentra en](docs/adr/ADR-001.md)
+
+ ### Decision Central
+ No introducir puertos/adaptadores para la capa de persistencia por ausencia de drivers reales de cambio de base de datos (YAGNI), y aprovechar la interfaz `ObservadorCambioEstado` como punto de extensión (seam) ya existente para absorber la futura integración vía API externa del área de Contabilidad.
+
+ ## 7. Evidencia del Pipeline de GitHub Actions
+ A continuación se documenta la verificación del pipeline de integración continua (`.github/workflows/arquitectura.yml`) detectando la violación intencional de la Regla 1 de ArchUnit (`procesamientoSinPersistenciaNiWeb`) y su posterior recuperación tras aplicar `git revert`:
+ * Deteccion del error
+ ![Deteccion de erro en GitHub/Actions](./evidencias/parte-2/Violacion%20de%20arquitectura.png)
+ * Reversion del erro y compilacion correcta
+ ![Pruebas en verde](./evidencias/parte-2/Pruebas%20en%20verde%20y%20compilacion%20correcta.png)
