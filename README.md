@@ -1,5 +1,7 @@
 # Sistema de Solicitudes de Reembolso de Gastos Corporativos
 
+# Parte 1: Análisis de Requisitos, Diseño Propuesto e Implementación
+
 ## 1. Diseño Propuesto (Previo a la Implementación)
 
 | Requisito Funcional | Punto de Variabilidad | Patrón de Diseño Propuesto | Justificación (Test de Explicabilidad en 1 oración) |
@@ -78,3 +80,50 @@ Se verifica que `ValidadorDuplicados` recibe la información pre-cargada por el 
 ## Resultado de los imports
 
 ![Captura de consola de los imports](<./evidencias/parte-1/Resultados de los Imports del dominio y Spring.png>)
+
+# Parte 2: Decisión Arquitectónica y Análisis de Impacto
+
+## 4. Desicion de diseño: Alcance de la Regla 1 de ArchUnit sobre org.springframework
+
+#### Decisión
+La regla `procesamientoSinPersistenciaNiWeb` prohíbe que `..procesamiento..` dependa de `org.springframework.data..` y `jakarta.persistence..`, pero permite el uso de anotaciones de estereotipo como `@Component` (`org.springframework.stereotype.Component`).
+
+#### Justificación
+ Existe una diferencia fundamental entre metadatos declarativos de cableado (`@Component`) y dependencias tecnológicas acoplantes (`Spring Data`, `JPA`, `Spring Web`). `@Component` es una anotación pasiva que permite a Spring descubrir los eslabones, calculadoras y observadores automáticamente sin impedir que dichas clases se instancien con `new` en pruebas unitarias puras en milisegundos. Prohibir todo `org.springframework..` obligaría a escribir métodos `@Bean` manuales en clases `@Configuration` para cada estrategia y validador sin aportar aislamiento real frente a la base de datos o la capa web.
+
+ ## 5. Desicion de diseño: Qué se Descartó y Por Qué (Análisis de Impacto y Sobreingeniería)
+
+ Durante el desarrollo se evaluaron y descartaron conscientemente las siguientes alternativas por constituir sobreingeniería frente a los requisitos actuales:
+
+ ### 5.1. `Spring ApplicationEventPublisher` en lugar de `List<ObservadorCambioEstado>`
+
+ #### Se considera
+ Publicar eventos de dominio mediante `ApplicationEventPublisher` y suscribir métodos con `@EventListener` en lugar de inyectar `List<ObservadorCambioEstado>` directamente en `SolicitudReembolsoService`.
+ #### Se descarta
+ Con tres observadores conocidos en tiempo de compilación dentro del mismo módulo, un bus de eventos genérico agrega indirección innecesaria y dificulta seguir el flujo de llamadas en el IDE, mientras que la interfaz `ObservadorCambioEstado` ya cumple el desacoplamiento exigido por RF3.
+ #### Futura señal que haria reconsiderar la desicion
+ Si nuevos módulos externos al contexto de reembolsos necesitan reaccionar de forma asíncrona o atada a la confirmación de la transacción (`@TransactionalEventListener(phase = AFTER_COMMIT)`) sin acoplarse al paquete de procesamiento.
+
+### 5.2. `Visitor` o `Abstract Factory` para exportación de reportes en varios formatos
+ #### Se considera
+ Crear anticipadamente una jerarquía de exportadores para formatos PDF, Excel y CSV.
+ #### Se descarta
+ Actualmente solo se requiere un formato; al no existir una segunda ni tercera variante real solicitada, no se cumple la Rule of Three y crear la abstracción violaría YAGNI.
+ #### Futura señal que haria reconsiderar la desicion
+ Cuando Finanzas o Contabilidad soliciten formalmente al menos dos formatos adicionales de exportación con representaciones estructurales distintas.
+
+### 5.3. Jerarquía de Excepciones Específicas por cada Validador
+ #### Se considera
+Reemplazar el record `ResultadoValidacion(boolean valida, String motivoRechazo)` por una jerarquía de excepciones (`FaltaSoporteException`, `TopeCategoriaExcedidoException`, `SolicitudDuplicadaException` extendiendo de `SolicitudInvalidaException`) lanzadas directamente por cada eslabón de `ValidadorSolicitud`.
+ #### Se descarta
+Aplicando **YAGNI** y **KISS**, tanto `SolicitudReembolsoService` como `SolicitudReembolsoController` procesan cualquier rechazo de validación del mismo modo (abortar la creación y retornar HTTP 400 con el motivo textual). Crear una subclase de excepción por cada regla multiplicaría el número de clases y usaría excepciones como control de flujo ordinario sin que ningún consumidor las capture por separado. 
+#### Futura señal que haria reconsiderar la desicion
+ Cuando un sistema cliente o el frontend necesite ejecutar flujos de compensación automatizados distintos o recibir códigos HTTP diferenciados (por ejemplo, `409 Conflict` para duplicados vs. `422 Unprocessable Entity` para topes) según el validador específico que rechazó la solicitud.
+
+### 5.4. Patrón `Builder` o `Factory Method` para construir SolicitudReembolso
+ #### Se considera
+Crear un `SolicitudReembolsoBuilder` o fábricas por categoría (`SolicitudViajeFactory`, `SolicitudCapacitacionFactory`) dado que el campo `diasViaje` solo es relevante cuando la categoría es `VIAJE`.
+ #### Se descarta
+Aplicando el test de explicabilidad y la ****Rule of Three**, `SolicitudReembolso` posee una estructura simple que Jackson deserializa directamente desde el cuerpo JSON de la petición REST; introducir fábricas o builders hoy añadiría clases intermedias sin resolver una complejidad real de inicialización.
+#### Futura señal que haria reconsiderar la desicion
+ Cuando al menos tres categorías de gasto incorporen conjuntos de atributos exclusivos complejos o reglas de inicialización mutuamente excluyentes que hagan ambiguo un único constructor o payload de entrada.
